@@ -9,20 +9,20 @@ local function close_menu()
 	disable_time_stop_including_mario()
 end
 
-local lm = gMarioStates[0]
+local m = gMarioStates[0]
 -- Define menu options
 local menuOptions = {
-	{ label = "Better Wing Cap",		action = BWC,	status = gpt(lm, BWC),		description = "Improved flight" },
-	{ label = "Cap Throw",				action = CT,	status = gpt(lm, CT),		description = "Exchange power-ups!" },
-	{ label = "Air Turn",				action = AT,	status = gpt(lm, AT),		description = "Air turning" },
-	{ label = "Ground Pound Dive",		action = GPD,	status = gpt(lm, GPD),		description = "Dive from a ground pound" },
-	{ label = "Ground Pound Extras",	action = GPE,	status = gpt(lm, GPE),		description = "Give your ground pound more OOOF" },
-	{ label = "Fall Damage",			action = FD,	status = gpt(lm, FD),		description = "OOOF" },
-	{ label = "Rolling",				action = ROLL,	status = gpt(lm, ROLL),		description = "I roll" },
-	{ label = "Steep Jumps",			action = SJ,	status = gpt(lm, SJ),		description = "Wah; Hoo; Woo; Hoo; *sliding*" },
-	{ label = "Twirl",					action = TWIRL,	status = gpt(lm, TWIRL),	description = "Yippee!" },
-	{ label = "Wall Slide",				action = WS,	status = gpt(lm, WS),		description = "Slide along walls" },
-	{ label = "No Air Dive",			action = RAD,	status = gpt(lm, RAD),		description = "No Air Dive" },
+	{ label = "Better Wing Cap",		action = BWC,	status = gpt(m, BWC),		description = "Improved flight" },
+	{ label = "Cap Throw",				action = CT,	status = gpt(m, CT),		description = "Exchange power-ups!" },
+	{ label = "Air Turn",				action = AT,	status = gpt(m, AT),		description = "Air turning" },
+	{ label = "Ground Pound Dive",		action = GPD,	status = gpt(m, GPD),		description = "Dive from a ground pound" },
+	{ label = "Ground Pound Extras",	action = GPE,	status = gpt(m, GPE),		description = "Give your ground pound more OOOF" },
+	{ label = "Fall Damage",			action = FD,	status = gpt(m, FD),		description = "OOOF" },
+	{ label = "Rolling",				action = ROLL,	status = gpt(m, ROLL),		description = "I roll" },
+	{ label = "Steep Jumps",			action = SJ,	status = gpt(m, SJ),		description = "Wah; Hoo; Woo; Hoo; *sliding*" },
+	{ label = "Twirl",					action = TWIRL,	status = gpt(m, TWIRL),		description = "Yippee!" },
+	{ label = "Wall Slide",				action = WS,	status = gpt(m, WS),		description = "Slide along walls" },
+	{ label = "No Air Dive",			action = RAD,	status = gpt(m, RAD),		description = "No Air Dive" },
 	{ label = "Exit",					action = nil,	status = nil,				description = "Exit the menu." },
 }
 
@@ -32,12 +32,12 @@ local prevOption = 1 -- for hover sound effect
 
 -- Set the scale factor for the menu
 local menuScale = 2.0 -- Adjust this value as needed
-
--- Add a title for the menu
-local menuTitle = "SillySettings"
 local w = djui_hud_get_screen_width()
 local h = djui_hud_get_screen_height()
 local titleY = 150
+
+-- Add a title for the menu
+local menuTitle = "SillySettings"
 
 -- Cursor!
 local cursor = get_texture_info("texture_menu_idle_hand")
@@ -47,11 +47,11 @@ local function drawMenu()
 
 	djui_hud_set_color(0, 0, 0, 200)
 	djui_hud_render_rect(0, 0, 10000, 10000)
-	
+
 	-- Set text color and position for the title
 	djui_hud_set_color(255, 255, 255, 255)
 	djui_hud_set_font(FONT_HUD)
-	local titleX = ((w - djui_hud_measure_text(menuTitle) * menuScale * 2.5) / 2)
+	local titleX = (w - djui_hud_measure_text(menuTitle) * menuScale * 2.5) / 2
 
 	-- Draw the title
 	djui_hud_print_text(menuTitle, titleX, titleY, menuScale * 2.5)
@@ -98,11 +98,38 @@ local cooldown = 5
 local cooldownCounter = 0
 
 local function updateMenu()
-	local stickY = lm.controller.stickY
+	local stickY = m.controller.stickY
 	local mouseX = djui_hud_get_mouse_x()
 	local mouseY = djui_hud_get_mouse_y()
 
 	djui_hud_render_texture(cursor, mouseX - 8, mouseY - 8, 2, 2)
+
+	local gp = m.marioObj.header.gfx.cameraToObject
+	if cooldownCounter > 0 then
+		cooldownCounter = cooldownCounter - 1
+	else
+		if stickY > 0.5 then
+			-- Move selection down
+			selectedOption = selectedOption - 1
+			cooldownCounter = cooldown
+		elseif stickY < -0.5 then
+			-- Move selection up
+			selectedOption = selectedOption + 1
+			cooldownCounter = cooldown
+		elseif m.controller.buttonPressed & START_BUTTON ~= 0 then
+            close_menu()
+        end
+	end
+	if m.controller.buttonPressed & (A_BUTTON|B_BUTTON) ~= 0 then
+		stop_sound(SOUND_MENU_CHANGE_SELECT, gp)
+		play_sound(SOUND_MENU_CLICK_FILE_SELECT, gp)
+		local option = menuOptions[selectedOption]
+		-- Execute the selected menu option
+		if option.status ~= nil then
+			flick(option.action)
+			option.status = gpt(m, option.action)
+		else close_menu() end
+	end
 
 	for i, option in ipairs(menuOptions) do
 		local textWidth = djui_hud_measure_text(option.label)
@@ -117,33 +144,6 @@ local function updateMenu()
 		end
 	end
 
-	local gp = lm.marioObj.header.gfx.cameraToObject
-	if cooldownCounter > 0 then
-		cooldownCounter = cooldownCounter - 1
-	else
-		if stickY > 0.5 then
-			-- Move selection down
-			selectedOption = selectedOption - 1
-			cooldownCounter = cooldown
-		elseif stickY < -0.5 then
-			-- Move selection up
-			selectedOption = selectedOption + 1
-			cooldownCounter = cooldown
-		elseif lm.controller.buttonPressed & (A_BUTTON|B_BUTTON) ~= 0 then
-			stop_sound(SOUND_MENU_CHANGE_SELECT, gp)
-			play_sound(SOUND_MENU_CLICK_FILE_SELECT, gp)
-			local option = menuOptions[selectedOption]
-			-- Execute the selected menu option
-			if option.status ~= nil then
-				flick(option.action)
-				option.status = gpt(lm, option.action)
-			else close_menu() end
-		end
-		if is_game_paused() then
-			close_menu()
-		end
-	end
-
 	if selectedOption < 1 then
 		selectedOption = #menuOptions
 	elseif selectedOption > #menuOptions then
@@ -153,6 +153,10 @@ local function updateMenu()
 	if prevOption ~= selectedOption then
 		play_sound(SOUND_MENU_CHANGE_SELECT, gp)
 		prevOption = selectedOption
+	end
+
+	if is_game_paused() then
+		close_menu()
 	end
 end
 
